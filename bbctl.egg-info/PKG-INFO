@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: bbctl
+Version: 1.0
+Summary: BlueBox control program
+Home-page: http://www.github.org/satlab/bluebox/
+Author: Jeppe Ledet-Pedersen
+Author-email: jlp@satlab.org
+License-File: COPYING
+Dynamic: author
+Dynamic: author-email
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: summary
