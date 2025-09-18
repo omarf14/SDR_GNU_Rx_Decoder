@@ -113,7 +113,6 @@ class PacketHandler():
     #         offset += length
     #     return result[:-1]
 
-    
     @staticmethod
     def hexdump(src, length=16):
         result = []
@@ -157,17 +156,7 @@ class PacketHandler():
             bbfec.init_viterbi(self.vp, 0)
             bbfec.update_viterbi(self.vp, data_mutable, int((rx_length * BITS_PER_BYTE) + (VITERBI_CONSTRAINT - 1)))
             bit_corr = bbfec.chainback_viterbi(self.vp, data_mutable, int(rx_length * BITS_PER_BYTE), int(0))
-
-        # if self.randomize:
-        #     bbfec.ccsds_xor_sequence(data_mutable, self.ccsds_sequence, int(rx_length))
-
-        # if self.rs:
-        #     pad = RS_BLOCK_LENGTH - RS_LENGTH - (rx_length - RS_LENGTH)
-        #     byte_corr = bbfec.decode_rs(data_mutable, None, 0, int(pad))
-        #     rx_length = rx_length - RS_LENGTH
-        #     if byte_corr == -1:
-        #         raise Exception("Reed-Solomon decoding error")
-
+            
         return data_mutable, bit_corr, byte_corr
     
     
@@ -176,12 +165,6 @@ class PacketHandler():
         payload_mutable = ctypes.create_string_buffer(data)
         bit_corr = 0
         byte_corr = 0
-
-        # if self.viterbi:
-        #     rx_length = (rx_length / VITERBI_RATE) - VITERBI_TAIL
-        #     bbfec.init_viterbi(self.vp, 0)
-        #     bbfec.update_viterbi(self.vp, data_mutable, int((rx_length * BITS_PER_BYTE) + (VITERBI_CONSTRAINT - 1)))
-        #     bit_corr = bbfec.chainback_viterbi(self.vp, data_mutable, int(rx_length * BITS_PER_BYTE), int(0))
 
         if self.randomize:
             bbfec.ccsds_xor_sequence(payload_mutable, self.ccsds_sequence, int(rx_length))

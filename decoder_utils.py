@@ -32,6 +32,7 @@ CSP_OVERHEAD = 4
 SHORT_FRAME_LIMIT = 25
 LONG_FRAME_LIMIT = 86
 TOTAL_FRAME_BIT_LEN = (255)*VITERBI_RATE*8
+TOTAL_FRAME_BYTE_LEN = (255)*VITERBI_RATE
 ASM_BIT_LEN = 64
 ACCESS_KEY_32B = 0xe15ae893
 ACCES_KEY_CONVOLVED_64B = 0xB9F8B220B1CF12BC
@@ -65,16 +66,6 @@ bbfec.ccsds_xor_sequence.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_
 bbfec.ccsds_xor_sequence.restype = None
 
 
-def binary_array_to_hex(binary_array):
-    hex_array = []
-    for i in range(0, len(binary_array), 8):
-        byte = binary_array[i:i+8]
-        binary_str = ''.join(str(bit) for bit in byte)
-        hex_value = hex(int(binary_str, 2))
-        hex_array.append(hex_value)
-    return hex_array
-
-
 def decode_data(tb, st_idx):
     # Initialize objects 
     symbols = tb.vector_sink_sym_sync.data()
@@ -91,16 +82,17 @@ def decode_data(tb, st_idx):
         diff_bits.append(diff)
         prev = b
 
-    # Search for convolved access code
-    key_bits = [(ACCES_KEY_CONVOLVED_64B >> i) & 1 for i in range(ASM_BIT_LEN - 1, -1, -1)]
-
     # Main decoding loop
     msg_ctr = 0
     i=st_idx
-    while i < (len(diff_bits) - ASM_BIT_LEN+TOTAL_FRAME_BIT_LEN): #for i in range(st_idx, len(diff_bits) - 31):
-        # Look for convolved access code (FIXME: It can be improved by XOR instead of the for loop)
+    while i + ASM_BIT_LEN + TOTAL_FRAME_BIT_LEN <= len(diff_bits):
+        # Look for convolved access code
         segment = diff_bits[i:i+ASM_BIT_LEN]
-        matches64 = sum(b1 == b2 for b1, b2 in zip(segment, key_bits))
+        segment_int = 0
+        for bit in segment:
+            segment_int = (segment_int << 1) | bit
+        xor_result = segment_int ^ ACCES_KEY_CONVOLVED_64B
+        matches64 = 64 - bin(xor_result).count('1')
 
         # If enough matches, proceed with the decoding process
         if matches64 >= THRESHOLD64:
@@ -111,9 +103,8 @@ def decode_data(tb, st_idx):
             ##############################
 
             # Generate a byte array with the 510 bytes encoded
-            hex_result = binary_array_to_hex(diff_bits[i:i+TOTAL_FRAME_BIT_LEN])
-            hex_string = ''.join(f'{int(h, 16):02x}' for h in hex_result)  # Format with leading zeros
-            encoded_data = codecs.decode(hex_string, "hex")
+            message = diff_bits[i:i+TOTAL_FRAME_BIT_LEN]
+            byte_array = bytes((sum(message[k * 8 + j] << (7 - j) for j in range(8)) for k in range(TOTAL_FRAME_BYTE_LEN)))
 
             ##### DEBUGGING PRINTING #####
             # print("Original data:\n{0}\n".format(ec.hexdump(TESTDATA)))
@@ -121,7 +112,7 @@ def decode_data(tb, st_idx):
 
             try:
                 # Unconvolve data to check ASM
-                data, bit_corr, byte_corr = ec.decode_viterbi(encoded_data)
+                data, bit_corr, byte_corr = ec.decode_viterbi(byte_array)
 
 
                 ##### DEBUGGING PRINTING #####
@@ -144,12 +135,12 @@ def decode_data(tb, st_idx):
                     # Decode payload 
                     data, bit_corr, byte_corr = ec.decode_fec(data[4:258])
                     payload_len = int.from_bytes(data[0:2], byteorder='little')
-                    print(f"INFO: Acces key found at index {idx}, matches = {matches32}, matches2 = {matches32}")
+                    print(f"INFO: Acces key found at index {idx}, matches = {matches64}, matches2 = {matches32}")
                     print("INFO: Decode success with {} corrected bits, payload: \n{}\n".format(bit_corr, data[2:payload_len].decode('utf-8', errors='replace')))
                     msg_ctr += 1
-                    i = i+ASM_BIT_LEN+TOTAL_FRAME_BIT_LEN - 1
+                    i = i + TOTAL_FRAME_BIT_LEN - 8*10
                     continue
-                
+
             except Exception as e:
 
                 ##### DEBUGGING PRINTING #####

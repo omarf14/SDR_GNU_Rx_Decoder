@@ -62,12 +62,11 @@ FILTER_TRANSITION = 50000
 sq_trigger = 0
 decode_trigger = 0
 tot_ctr = 0
-symbol_space = 100e3
-fidx = 0
+fidx = 250000 # It depend in how many IDLE 
 
 def check_squelch_state(tb):
     global sq_trigger, fidx
-    global decode_trigger, tot_ctr, symbol_space
+    global decode_trigger, tot_ctr
     val = tb.probe.level()
 
     # Check squelch level to avoid processing garbage 
@@ -78,13 +77,13 @@ def check_squelch_state(tb):
             tout = 0
 
             # Wait a second to ensure there is no signal (FIXME: this tout can be reduced)
-            while abs(val) == 0 and tout < 1000:
+            while abs(val) == 0 and tout < 500:
                 val = tb.probe.level()
                 tout+=1
                 time.sleep(0.001)
             
             # If tout reached means that a transmission has finished
-            if tout >= 1000:
+            if tout >= 500:
 
                 ##### DEBUGGING PRINTING #####
                 # print(f"INFO: 🔇 Signal not detected after tout, squelch is closed.")
@@ -92,18 +91,18 @@ def check_squelch_state(tb):
 
 
                 # Process pending block of data
-                ctr, idx = du.decode_data(tb, fidx)# int(((ctr)*symbol_space)))
+                ctr, idx = du.decode_data(tb, fidx)
                 tot_ctr += ctr
                 print(f"INFO: Total messages decoded {tot_ctr}")
 
                 # Reset buffer and control variables
                 tb.vector_sink_sym_sync.reset()
                 sq_trigger = 0
-                fidx = 0
+                fidx = 250000
                 tot_ctr = 0
 
 
-    elif abs(val.real) > 0.3:
+    elif abs(val.real) > 0.1:
 
         # This block is executed when the squelch is switched on.
         if sq_trigger == 0:
@@ -201,7 +200,7 @@ def main(options=None):
     try:
         while True:
             check_squelch_state(tb)
-            
+
     except KeyboardInterrupt:
         tb.stop()
         tb.wait()
