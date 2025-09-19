@@ -25,15 +25,16 @@ BITS_PER_BYTE = 8
 MAX_FEC_LENGTH = 255
 RS_LENGTH = 32
 RS_BLOCK_LENGTH = 255
+ASM_BIT_LEN = 64
+RAW_ASM_BYTE_LEN = 4 
 HMAC_LENGTH = 2
 HMAC_KEY_LENGTH = 16
 SIZE_LENGTH = 2
 CSP_OVERHEAD = 4
 SHORT_FRAME_LIMIT = 25
 LONG_FRAME_LIMIT = 86
-TOTAL_FRAME_BIT_LEN = (255)*VITERBI_RATE*8
-TOTAL_FRAME_BYTE_LEN = (255)*VITERBI_RATE
-ASM_BIT_LEN = 64
+TOTAL_FRAME_BIT_LEN = (RS_BLOCK_LENGTH + RAW_ASM_BYTE_LEN)*VITERBI_RATE*8
+TOTAL_FRAME_BYTE_LEN = (RS_BLOCK_LENGTH + RAW_ASM_BYTE_LEN)*VITERBI_RATE
 ACCESS_KEY_32B = 0xe15ae893
 ACCES_KEY_CONVOLVED_64B = 0xB9F8B220B1CF12BC
 THRESHOLD64 = 50
@@ -99,7 +100,7 @@ def decode_data(tb, st_idx):
             idx = i
 
             ##### DEBUGGING PRINTING #####
-            # print(f"INFO: Acces key found at index {idx}, matches = {matches}")
+            # print(f"INFO: Acces key found at index {idx}, matches = {matches64}")
             ##############################
 
             # Generate a byte array with the 510 bytes encoded
@@ -135,7 +136,7 @@ def decode_data(tb, st_idx):
                     # Decode payload 
                     data, bit_corr, byte_corr = ec.decode_fec(data[4:258])
                     payload_len = int.from_bytes(data[0:2], byteorder='little')
-                    print(f"INFO: Acces key found at index {idx}, matches = {matches64}, matches2 = {matches32}")
+                    # print(f"INFO: Acces key found at index {idx}, matches = {matches64}, matches2 = {matches32}")
                     print("INFO: Decode success with {} corrected bits, payload: \n{}\n".format(bit_corr, data[2:payload_len].decode('utf-8', errors='replace')))
                     msg_ctr += 1
                     i = i + TOTAL_FRAME_BIT_LEN - 8*10

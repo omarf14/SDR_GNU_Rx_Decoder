@@ -283,7 +283,7 @@ void encode_viterbi(unsigned char *channel, unsigned char *data, int framebits)
     unsigned char bit;
     unsigned char in_sr = 0;
     unsigned char out_sr = 0;
-    unsigned char temp[256];
+    unsigned char temp[520];
 
     for (i = 0; i < framebits + 8; i++) {
         bit = (i >= framebits) ? 0 : get_bit(data, i);

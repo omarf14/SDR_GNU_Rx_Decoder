@@ -35,6 +35,7 @@ MAX_FEC_LENGTH = 255
 
 RS_LENGTH = 32
 RS_BLOCK_LENGTH = 255
+ASM_LENGTH = 4
 
 HMAC_LENGTH = 2
 HMAC_KEY_LENGTH = 16
@@ -90,7 +91,7 @@ class PacketHandler():
 
         bbfec.ccsds_generate_sequence(self.ccsds_sequence, MAX_FEC_LENGTH)
 
-        self.vp = bbfec.create_viterbi(MAX_FEC_LENGTH * BITS_PER_BYTE)
+        self.vp = bbfec.create_viterbi((MAX_FEC_LENGTH + ASM_LENGTH) * BITS_PER_BYTE)
 
         self.key = hashlib.sha1(codecs.encode(key, "ascii")).digest()[:HMAC_KEY_LENGTH] if key else None
         self.viterbi = viterbi
