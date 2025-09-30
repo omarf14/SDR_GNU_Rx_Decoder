@@ -30,7 +30,8 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from IPython import embed
 import decoder_utils as du
-
+import cProfile
+import queue
 
 ############## Rx Tune for 4MSPS #############
 # SAMP_RATE = 4000000
@@ -63,6 +64,12 @@ sq_trigger = 0
 decode_trigger = 0
 tot_ctr = 0
 fidx = 250000 # It depend in how many IDLE 
+decoder_queue = queue.Queue(maxsize=1024)
+
+def monitor_squelch(tb):
+    while tb.flowgraph_started.is_set():
+        check_squelch_state(tb)
+        time.sleep(0.01)
 
 def check_squelch_state(tb):
     global sq_trigger, fidx
@@ -91,7 +98,7 @@ def check_squelch_state(tb):
 
 
                 # Process pending block of data
-                ctr, idx = du.decode_data(tb, fidx)
+                ctr, idx = du.prefilter_data(tb, fidx)
                 tot_ctr += ctr
                 print(f"INFO: Total messages decoded {tot_ctr}")
 
@@ -115,7 +122,7 @@ def check_squelch_state(tb):
         # Decode data from last idx 
         len_sym = len(tb.vector_sink_sym_sync.data())
         if len_sym > fidx: 
-            ctr, idx = du.decode_data(tb, fidx)
+            ctr, idx = du.prefilter_data(tb, fidx)
             if ctr:
                 fidx = idx + 1
                 tot_ctr += ctr
@@ -157,21 +164,26 @@ class bpsk_rx_nogui(gr.top_block):
                 window.WIN_HAMMING,
                 0.35))
         self.digital_symbol_sync_xx_0_0 = digital.symbol_sync_cc(
-            digital.TED_MUELLER_AND_MULLER,
-            SPS,
-            loop_bw_0,
-            1.0,
-            0.1,
-            1.5,
-            1,
-            digital.constellation_bpsk().base(),
-            digital.IR_MMSE_8TAP,
-            128,
-            [])
+                                                        digital.TED_MUELLER_AND_MULLER,
+                                                        SPS,
+                                                        loop_bw_0,
+                                                        1.0,
+                                                        0.1,
+                                                        1.5,
+                                                        1,
+                                                        digital.constellation_bpsk().base(),
+                                                        digital.IR_MMSE_8TAP,
+                                                        128,
+                                                        [])
         self.digital_costas_loop_cc_0_0 = digital.costas_loop_cc(loop_bw, 2, False)
-        self.blocks_throttle2_0 = blocks.throttle( gr.sizeof_gr_complex*1, samp_rate, True, 0 if "auto" == "auto" else max( int(float(0.1) * samp_rate) if "auto" == "time" else int(0.1), 1) )
+        # self.blocks_throttle2_0 = blocks.throttle(  
+        #                             gr.sizeof_gr_complex*1, 
+        #                             samp_rate, 
+        #                             True, 
+        #                             0 if "auto" == "auto" else max( int(float(0.1) * samp_rate) if "auto" == "time" else int(0.1), 
+        #                             1) )
         self.blocks_interleaved_short_to_complex_0 = blocks.interleaved_short_to_complex(True, False,2047)
-        self.blocks_correctiq_auto_0_0 = blocks.correctiq_auto(samp_rate, freq, 1.5, 2)
+        # self.blocks_correctiq_auto_0_0 = blocks.correctiq_auto(samp_rate, freq, 1.5, 2)
         self.blocks_complex_to_float_0 = blocks.complex_to_float(1)
         self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((-25), (1e-4), True, False)
         self.vector_sink_sym_sync = blocks.vector_sink_f()
@@ -183,27 +195,41 @@ class bpsk_rx_nogui(gr.top_block):
         # self.connect((self.blocks_throttle2_0, 0), (self.low_pass_filter_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.analog_pwr_squelch_xx_0, 0))
         self.connect(self.analog_pwr_squelch_xx_0, self.probe)
-        self.connect((self.analog_pwr_squelch_xx_0, 0), (self.blocks_correctiq_auto_0_0, 0))
-        self.connect((self.blocks_correctiq_auto_0_0, 0), (self.digital_costas_loop_cc_0_0, 0))
+        # self.connect((self.analog_pwr_squelch_xx_0, 0), (self.blocks_correctiq_auto_0_0, 0))
+        # self.connect((self.blocks_correctiq_auto_0_0, 0), (self.digital_costas_loop_cc_0_0, 0))
+        self.connect((self.analog_pwr_squelch_xx_0, 0), (self.digital_costas_loop_cc_0_0, 0))
         self.connect((self.digital_costas_loop_cc_0_0, 0), (self.digital_symbol_sync_xx_0_0, 0))
         self.connect((self.digital_symbol_sync_xx_0_0, 0), (self.blocks_complex_to_float_0, 0))
         self.connect((self.blocks_complex_to_float_0, 0), (self.vector_sink_sym_sync, 0))
 
 
 def main(options=None):
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+
     tb = bpsk_rx_nogui()
     tb.start()
     tb.flowgraph_started = threading.Event()
     tb.flowgraph_started.set()
-
+    squelch_th = threading.Thread(target=monitor_squelch, daemon=True)
+    squelch_th.start()
+    decoder_th = threading.Thread(target=du.decoder_thread, daemon=True)
+    decoder_th.start()
 
     try:
-        while True:
-            check_squelch_state(tb)
+        tb.wait()
+        # while True:
+        #     # check_squelch_state(tb)
+        #     continue
 
     except KeyboardInterrupt:
         tb.stop()
         tb.wait()
+        squelch_th.join()
+        decoder_th.join()
+        profiler.disable()
+        profiler.print_stats(sort='cumtime')
 
 if __name__ == '__main__':
     main()
