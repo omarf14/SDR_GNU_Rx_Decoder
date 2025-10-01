@@ -30,6 +30,7 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from IPython import embed
 import decoder_utils as du
+from gnuradio import iio
 
 
 ############## Rx Tune for 4MSPS #############
@@ -46,17 +47,31 @@ import decoder_utils as du
 # FILTER_TRANSITION = 200000
 
 ############## Rx Tune for 1MSPS #############
+# SAMP_RATE = 1000000
+# BW = 250000
+# RF_GAIN = 50
+# LOOP_BW_0 = 0.003
+# LOOP_BW = 0.001
+# FREQ = 2.23e9
+# BWIDTH = BW
+# SPS = 8
+# SYMBOL_RATE = SAMP_RATE / SPS
+# FILTER_CUTOFF = BW*1.2
+# FILTER_TRANSITION = 50000
+
+
 SAMP_RATE = 1000000
 BW = 250000
-RF_GAIN = 50
-LOOP_BW_0 = 0.003
-LOOP_BW = 0.001
+RF_GAIN = 30
+LOOP_BW_0 = 0.002 # Sym Sync Loop
+LOOP_BW = 0.05  # Costas Loop
 FREQ = 2.23e9
 BWIDTH = BW
 SPS = 8
 SYMBOL_RATE = SAMP_RATE / SPS
 FILTER_CUTOFF = BW*1.2
 FILTER_TRANSITION = 50000
+ANALOG_SQUELCH = -50
 
 # Global variables
 sq_trigger = 0
@@ -114,7 +129,8 @@ def check_squelch_state(tb):
 
         # Decode data from last idx 
         len_sym = len(tb.vector_sink_sym_sync.data())
-        if len_sym > fidx: 
+        if len_sym > fidx:
+            print(f"INFO: Looking at idx {fidx}")
             ctr, idx = du.decode_data(tb, fidx)
             if ctr:
                 fidx = idx + 1
@@ -132,21 +148,35 @@ class bpsk_rx_nogui(gr.top_block):
         self.loop_bw = loop_bw = LOOP_BW
         self.freq = freq = FREQ
         self.bwidth = bwidth = BW
-        self.uhd_usrp_source_0 = uhd.usrp_source(
-            ",".join(("", '')),
-            uhd.stream_args(
-                cpu_format="sc16",
-                args='',
-                channels=list(range(0,1)),
-            ),
-        )
-        self.uhd_usrp_source_0.set_samp_rate(samp_rate)
-        self.uhd_usrp_source_0.set_center_freq(freq, 0)
-        self.uhd_usrp_source_0.set_antenna("RX2", 0)
-        self.uhd_usrp_source_0.set_bandwidth(bw, 0)
-        self.uhd_usrp_source_0.set_gain(rf_gain, 0)
-        self.uhd_usrp_source_0.set_auto_dc_offset(True, 0)
-        self.uhd_usrp_source_0.set_auto_iq_balance(True, 0)
+
+        if 0:
+            self.source = uhd.usrp_source(
+                ",".join(("", '')),
+                uhd.stream_args(
+                    cpu_format="sc16",
+                    args='',
+                    channels=list(range(0,1)),
+                ),
+            )
+            self.source.set_samp_rate(samp_rate)
+            self.source.set_center_freq(freq, 0)
+            self.source.set_antenna("RX2", 0)
+            self.source.set_bandwidth(bw, 0)
+            self.source.set_gain(rf_gain, 0)
+            self.source.set_auto_dc_offset(True, 0)
+            self.source.set_auto_iq_balance(True, 0)
+        else:
+            self.source = iio.fmcomms2_source_fc32('' if '' else iio.get_pluto_uri(), [True, True], 32768)
+            self.source.set_len_tag_key('packet_len')
+            self.source.set_frequency(2230000000)
+            self.source.set_samplerate(1000000)
+            self.source.set_gain_mode(0, 'manual')
+            self.source.set_gain(0, rf_gain)
+            self.source.set_quadrature(True)
+            self.source.set_rfdc(True)
+            self.source.set_bbdc(True)
+            self.source.set_filter_params('Auto', '', 0, 0)
+
         self.low_pass_filter_0 = filter.fir_filter_ccf(
             1,
             firdes.low_pass(
@@ -173,12 +203,12 @@ class bpsk_rx_nogui(gr.top_block):
         self.blocks_interleaved_short_to_complex_0 = blocks.interleaved_short_to_complex(True, False,2047)
         self.blocks_correctiq_auto_0_0 = blocks.correctiq_auto(samp_rate, freq, 1.5, 2)
         self.blocks_complex_to_float_0 = blocks.complex_to_float(1)
-        self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((-25), (1e-4), True, False)
+        self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((ANALOG_SQUELCH), (1e-4), True, False)
         self.vector_sink_sym_sync = blocks.vector_sink_f()
         self.probe = blocks.probe_signal_c()
 
-        self.connect((self.uhd_usrp_source_0, 0), (self.blocks_interleaved_short_to_complex_0, 0))
-        self.connect((self.blocks_interleaved_short_to_complex_0, 0), (self.low_pass_filter_0, 0))
+        # self.connect((self.source, 0), (self.blocks_interleaved_short_to_complex_0, 0))
+        self.connect((self.source, 0), (self.low_pass_filter_0, 0))
         # self.connect((self.blocks_interleaved_short_to_complex_0, 0), (self.blocks_throttle2_0, 0))
         # self.connect((self.blocks_throttle2_0, 0), (self.low_pass_filter_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.analog_pwr_squelch_xx_0, 0))

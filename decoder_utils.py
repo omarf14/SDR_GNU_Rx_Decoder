@@ -100,7 +100,7 @@ def decode_data(tb, st_idx):
             idx = i
 
             ##### DEBUGGING PRINTING #####
-            # print(f"INFO: Acces key found at index {idx}, matches = {matches64}")
+            print(f"INFO: Acces key found at index {idx}, matches = {matches64}")
             ##############################
 
             # Generate a byte array with the 510 bytes encoded
@@ -140,6 +140,7 @@ def decode_data(tb, st_idx):
                     print("INFO: Decode success with {} corrected bits, payload: \n{}\n".format(bit_corr, data[2:payload_len].decode('utf-8', errors='replace')))
                     msg_ctr += 1
                     i = i + TOTAL_FRAME_BIT_LEN - 8*10
+                    idx = i
                     continue
 
             except Exception as e:
@@ -152,7 +153,9 @@ def decode_data(tb, st_idx):
                 if ((len(diff_bits) - idx) < 4096):
                     idx -=1
                     break
-        
+        # else:
+        #     print(f"INFO: {matches64} matches at idx {i}")
+
         i+=1
 
     if msg_ctr:
