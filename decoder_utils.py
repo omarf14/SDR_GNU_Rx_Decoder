@@ -71,13 +71,14 @@ bbfec.ccsds_xor_sequence.restype = None
 
 
 def decoder_thread():
+    ec = PacketHandler(None)
     while True:
-        ec = PacketHandler(None)
         message = decoder_queue.get()
+        # print("INFO: Decoding message")
         byte_array = bytes((sum(message[k * 8 + j] << (7 - j) for j in range(8)) for k in range(TOTAL_FRAME_BYTE_LEN)))
 
         ##### DEBUGGING PRINTING #####
-        # print("Original data:\n{0}\n".format(ec.hexdump(TESTDATA)))
+        # print("Original data:\n{0}\n".format(ec.hexdump(byte_array)))
         ##############################
 
         try:
@@ -103,23 +104,24 @@ def decoder_thread():
 
             if matches32 >= THRESHOLD32:
                 # Decode payload 
-                data, bit_corr, byte_corr = ec.decode_fec(data[4:258])
-                payload_len = int.from_bytes(data[0:2], byteorder='little')
+                payload, bit_corr, byte_corr = ec.decode_fec(data[4:258])
+                payload_len = int.from_bytes(payload[0:2], byteorder='little')
                 # print(f"INFO: Acces key found at index {idx}, matches = {matches64}, matches2 = {matches32}")
-                print("INFO: Decode success with {} corrected bits, payload: \n{}\n".
-                      format(bit_corr, data[2:payload_len].decode('utf-8', errors='replace')))
-                msg_ctr += 1
-                i = i + TOTAL_FRAME_BIT_LEN - 8*10
-                continue
+                # payload_len = 255 if payload_len > 255 else payload_len
+                print("INFO: Decode success with {} corrected bits, payload_len {} payload: \n{}\n".
+                      format(bit_corr, payload_len, payload[2:payload_len].decode('utf-8', errors='replace')))
+                # msg_ctr += 1
+                # i = i + TOTAL_FRAME_BIT_LEN - 8*10
+                # continue
 
         except Exception as e:
 
             ##### DEBUGGING PRINTING #####
-            print("WARNING: Unable to decode original data:\n{0}".format(ec.hexdump(byte_array)))
-            # print(f"ERROR: {e}, idx {idx}, data_len {len(diff_bits)}")
+            # print("WARNING: Unable to decode original data:\n{0}".format(ec.hexdump(byte_array)))
+            print(f"ERROR: {e}, idx {0}, data_len {0}")
             ##############################
         
-        time.sleep(0.001)
+        time.sleep(0.1)
 
 
 def prefilter_data(tb, st_idx):
@@ -141,7 +143,7 @@ def prefilter_data(tb, st_idx):
     # Main decoding loop
     msg_ctr = 0
     i=st_idx
-    while i + ASM_BIT_LEN + TOTAL_FRAME_BIT_LEN <= len(diff_bits):
+    while i + TOTAL_FRAME_BIT_LEN <= len(diff_bits):
         # Look for convolved access code
         segment = diff_bits[i:i+ASM_BIT_LEN]
         segment_int = 0
@@ -155,61 +157,17 @@ def prefilter_data(tb, st_idx):
             idx = i
 
             ##### DEBUGGING PRINTING #####
-            # print(f"INFO: Acces key found at index {idx}, matches = {matches64}")
+            # print(f"INFO: Acces key found at index {idx}, matches = {matches64}, nbits {len(diff_bits)}")
             ##############################
 
             # Generate a byte array with the 510 bytes encoded
             message = diff_bits[i:i+TOTAL_FRAME_BIT_LEN]
-            decoder_queue.put(message)
-            # byte_array = bytes((sum(message[k * 8 + j] << (7 - j) for j in range(8)) for k in range(TOTAL_FRAME_BYTE_LEN)))
+            decoder_queue.put(tuple(message))
+            # print(f"INFO: Queue put, size {decoder_queue.qsize()}, idx {idx}")
 
-            # ##### DEBUGGING PRINTING #####
-            # # print("Original data:\n{0}\n".format(ec.hexdump(TESTDATA)))
-            # ##############################
-
-            # try:
-            #     # Unconvolve data to check ASM
-            #     data, bit_corr, byte_corr = ec.decode_viterbi(byte_array)
-
-
-            #     ##### DEBUGGING PRINTING #####
-            #     # print("Decoded data: ({0},{1})\n{2}\n".format(bit_corr, byte_corr, ec.hexdump(data)))
-            #     # asm_found = data[0:4][::-1].hex()
-            #     # print(f"ASM found: 0x{asm_found}")
-            #     ##############################
-
-
-            #     # Check Attached Sync Marker after viterbi processing
-            #     found_asm = int.from_bytes(data[0:4], byteorder='little')
-            #     diff = found_asm ^ ACCESS_KEY_32B
-            #     matches32 = 32 - bin(diff).count('1')
-
-            #     ##### DEBUGGING PRINTING #####
-            #     # print(f"Matching bits: {matches}.")
-            #     ##############################
-
-            #     if matches32 >= THRESHOLD32:
-            #         # Decode payload 
-            #         data, bit_corr, byte_corr = ec.decode_fec(data[4:258])
-            #         payload_len = int.from_bytes(data[0:2], byteorder='little')
-            #         # print(f"INFO: Acces key found at index {idx}, matches = {matches64}, matches2 = {matches32}")
-            #         print("INFO: Decode success with {} corrected bits, payload: \n{}\n".format(bit_corr, data[2:payload_len].decode('utf-8', errors='replace')))
-            #         msg_ctr += 1
-            #         i = i + TOTAL_FRAME_BIT_LEN - 8*10
-            #         continue
-
-            # except Exception as e:
-
-            #     ##### DEBUGGING PRINTING #####
-            #     # print("WARNING: Unable to decode original data:\n{0}".format(ec.hexdump(encoded_data)))
-            #     # print(f"ERROR: {e}, idx {idx}, data_len {len(diff_bits)}")
-            #     ##############################
-
-            #     if ((len(diff_bits) - idx) < 4096):
-            #         idx -=1
-            #         break
-        if matches64 > 60:
+            msg_ctr += 1
             i = i + TOTAL_FRAME_BIT_LEN - 8*10
+            idx = i
         i+=1
 
     if msg_ctr:
