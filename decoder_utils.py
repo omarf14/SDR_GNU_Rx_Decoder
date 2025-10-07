@@ -121,7 +121,7 @@ def decoder_thread():
             print(f"ERROR: {e}, idx {0}, data_len {0}")
             ##############################
         
-        time.sleep(0.1)
+        time.sleep(0.001)
 
 
 def prefilter_data(tb, st_idx):
@@ -162,7 +162,10 @@ def prefilter_data(tb, st_idx):
 
             # Generate a byte array with the 510 bytes encoded
             message = diff_bits[i:i+TOTAL_FRAME_BIT_LEN]
-            decoder_queue.put(tuple(message))
+            try:
+                decoder_queue.put(tuple(message), timeout=0.01)
+            except:
+                print("WARNING: decoder_queue full, dropping message")
             # print(f"INFO: Queue put, size {decoder_queue.qsize()}, idx {idx}")
 
             msg_ctr += 1

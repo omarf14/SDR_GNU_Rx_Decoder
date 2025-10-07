@@ -116,7 +116,7 @@ def check_squelch_state(tb):
                 # Process pending block of data
                 ctr, idx = du.prefilter_data(tb, fidx)
                 tot_ctr += ctr
-                print(f"INFO: Total messages decoded {tot_ctr}")
+                print(f"INFO: Total messages decoded {tot_ctr}, last idx {fidx}")
 
                 # Reset buffer and control variables
                 tb.vector_sink_sym_sync.reset()
@@ -138,7 +138,7 @@ def check_squelch_state(tb):
         # Decode data from last idx 
         len_sym = len(tb.vector_sink_sym_sync.data())
         if len_sym > fidx:
-            # print(f"INFO: Looking at idx {fidx}, squelch {val.real}")
+            print(f"INFO: Looking at idx {fidx}")
             ctr, idx = du.prefilter_data(tb, fidx)
             if ctr:
                 fidx = idx + 1
