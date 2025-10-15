@@ -64,7 +64,7 @@ from gnuradio import iio
 
 SAMP_RATE = 1000000
 BW = 250000
-RF_GAIN = 35
+RF_GAIN = 45
 LOOP_BW_0 = 0.008 # Sym Sync Loop (very sensitive)
 LOOP_BW = 0.01  # Costas Loop
 FREQ = 2.23e9
@@ -73,7 +73,7 @@ SPS = 8
 SYMBOL_RATE = SAMP_RATE / SPS
 FILTER_CUTOFF = BW*1.2
 FILTER_TRANSITION = 50000
-ANALOG_SQUELCH = -65
+ANALOG_SQUELCH = -50
 
 # Global variables
 sq_trigger = 0

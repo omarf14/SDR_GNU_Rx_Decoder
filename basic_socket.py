@@ -96,7 +96,7 @@ def decoder(message):
         matches32 = 32 - bin(diff).count('1')
 
         ##### DEBUGGING PRINTING #####
-        print(f"Matching bits: {matches32}.")
+        # print(f"Matching bits: {matches32}.")
         ##############################
 
         if matches32 >= THRESHOLD32:
@@ -122,7 +122,7 @@ def decoder(message):
 while True:
     data, addr = sock.recvfrom(4144)
 
-    print(f"\n🔔 PDU ready: {len(data)} bytes")
-    print(list(data[:20]), "...")
+    # print(f"\n🔔 PDU ready: {len(data)} bytes")
+    # print(list(data[:20]), "...")
     # print("Received:", data)
     decoder(data)
