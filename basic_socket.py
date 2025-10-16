@@ -80,16 +80,17 @@ def decoder(message):
         if matches32 >= THRESHOLD32:
             # Decode payload 
             payload, bit_corr, byte_corr = ec.decode_fec(data[ASM_SIZE:ASM_SIZE+RS_BLOCK_LENGTH])
-            # payload_len = int.from_bytes(payload[:PAYLOAD_LEN_SIZE], byteorder='little')
+            payload_len = int.from_bytes(payload[:PAYLOAD_LEN_SIZE], byteorder='little')
+            print(f"payload_len {payload_len}")
             # print("INFO: Decode success with {} corrected bits, payload_len {} payload: \n{}\n".
             #         format(bit_corr, payload_len, payload[2:payload_len].decode('utf-8', errors='replace')))
-            print("Decoded data: \n{0}\n".format(ec.hexdump(payload[PAYLOAD_LEN_SIZE:TOTAL_PAYLOAD_SIZE])))
+            # print("Decoded data: \n{0}\n".format(ec.hexdump(payload[PAYLOAD_LEN_SIZE:TOTAL_PAYLOAD_SIZE])))
             payload_crc = crc32(payload[CSP_HEADER_IDX:CRC_IDX]) & 0xFFFFFFFF
             received_crc = int.from_bytes(payload[CRC_IDX:TOTAL_PAYLOAD_SIZE], byteorder='little')  # or 'little'
             if payload_crc != received_crc:
                 print("ERROR: payload CRC missmatch")
             decrypted = decrypt_aes(payload[PAYLOAD_DATA_IDX:CRC_IDX], aes_key)
-            print("Decrypted payload data: \n{0}\n".format(ec.hexdump(decrypted)))
+            print("Decrypted payload data: \n{0}\n".format(ec.hexdump(decrypted[:payload_len])))
         else:
             print(f"ERROR: Matches below threshold {matches32}")
 

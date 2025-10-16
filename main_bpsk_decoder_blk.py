@@ -258,7 +258,6 @@ class pluto(gr.top_block, Qt.QWidget):
         self.digital_costas_loop_cc_0_0 = digital.costas_loop_cc(costas_loop, 2, False)
         self.digital_correlate_access_code_tag_xx_0 = digital.correlate_access_code_tag_bb('1011100111111000101100100010000010110001110011110001001010111100', 8, 'ac_found')
         self.digital_binary_slicer_fb_0 = digital.binary_slicer_fb()
-        self.blocks_vector_sink_x_0 = blocks.vector_sink_b(1, 1024)
         self.blocks_correctiq_auto_0_0_0 = blocks.correctiq_auto(samp_rate, freq, 1.5, 2)
         self.blocks_complex_to_float_0 = blocks.complex_to_float(1)
         self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((-70), (1e-4), True, True)
@@ -276,7 +275,6 @@ class pluto(gr.top_block, Qt.QWidget):
             udp_port=52001
         )
 
-        self.connect((self.digital_correlate_access_code_tag_xx_0, 0), (self.tag_to_pdu, 0))
 
 
 
@@ -296,7 +294,7 @@ class pluto(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_complex_to_float_0, 0), (self.digital_binary_slicer_fb_0, 0))
         self.connect((self.digital_binary_slicer_fb_0, 0), (self.digital_diff_decoder_bb_0, 0))
         self.connect((self.digital_diff_decoder_bb_0, 0), (self.digital_correlate_access_code_tag_xx_0, 0))
-        self.connect((self.digital_correlate_access_code_tag_xx_0, 0), (self.blocks_vector_sink_x_0, 0))
+        self.connect((self.digital_correlate_access_code_tag_xx_0, 0), (self.tag_to_pdu, 0))
         # self.connect((self.digital_correlate_access_code_tag_xx_0, 0), (self.tag_printer, 0))
         # self.connect((self.digital_correlate_access_code_tag_xx_0, 0), (self.pdu_printer, 0))
 
