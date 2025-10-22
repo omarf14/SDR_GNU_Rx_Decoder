@@ -29,13 +29,13 @@ THRESHOLD32 = 26
 ASM_SIZE    = 4
 
 # Decoding payload indexes
-PAYLOAD_LEN_IDX             = 0
-PAYLOAD_LEN_SIZE            = 2
-CSP_HEADER_IDX              = PAYLOAD_LEN_SIZE
+CSP_HEADER_IDX              = 0
 CSP_HEADER_SIZE             = 4
 CONTROL_HEADER_IDX          = CSP_HEADER_IDX+CSP_HEADER_SIZE
 CONTROL_HEADER_SIZE         = 5
-PAYLOAD_DATA_IDX            = CONTROL_HEADER_IDX+CONTROL_HEADER_SIZE
+PAYLOAD_LEN_IDX             = CONTROL_HEADER_IDX+CONTROL_HEADER_SIZE
+PAYLOAD_LEN_SIZE            = 2
+PAYLOAD_DATA_IDX            = PAYLOAD_LEN_IDX+PAYLOAD_LEN_SIZE
 PAYLOAD_DATA_SIZE           = 208
 CRC_IDX                     = PAYLOAD_DATA_IDX+PAYLOAD_DATA_SIZE
 CRC_SIZE                    = 4
@@ -80,11 +80,11 @@ def decoder(message):
         if matches32 >= THRESHOLD32:
             # Decode payload 
             payload, bit_corr, byte_corr = ec.decode_fec(data[ASM_SIZE:ASM_SIZE+RS_BLOCK_LENGTH])
-            payload_len = int.from_bytes(payload[:PAYLOAD_LEN_SIZE], byteorder='little')
+            payload_len = int.from_bytes(payload[PAYLOAD_LEN_IDX:PAYLOAD_DATA_IDX], byteorder='little')
             print(f"payload_len {payload_len}")
             # print("INFO: Decode success with {} corrected bits, payload_len {} payload: \n{}\n".
             #         format(bit_corr, payload_len, payload[2:payload_len].decode('utf-8', errors='replace')))
-            # print("Decoded data: \n{0}\n".format(ec.hexdump(payload[PAYLOAD_LEN_SIZE:TOTAL_PAYLOAD_SIZE])))
+            # print("Decoded data: \n{0}\n".format(ec.hexdump(payload[:TOTAL_PAYLOAD_SIZE])))
             payload_crc = crc32(payload[CSP_HEADER_IDX:CRC_IDX]) & 0xFFFFFFFF
             received_crc = int.from_bytes(payload[CRC_IDX:TOTAL_PAYLOAD_SIZE], byteorder='little')  # or 'little'
             if payload_crc != received_crc:
