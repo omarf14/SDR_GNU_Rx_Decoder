@@ -260,7 +260,7 @@ class pluto(gr.top_block, Qt.QWidget):
         self.digital_binary_slicer_fb_0 = digital.binary_slicer_fb()
         self.blocks_correctiq_auto_0_0_0 = blocks.correctiq_auto(samp_rate, freq, 1.5, 2)
         self.blocks_complex_to_float_0 = blocks.complex_to_float(1)
-        self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((-70), (1e-4), True, True)
+        # self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((-70), (1e-4), True, True)
         self._TED_gain_range = qtgui.Range(0.01, 0.1, 0.01, 0.02, 200)
         self._TED_gain_win = qtgui.RangeWidget(self._TED_gain_range, self.set_TED_gain, "'TED_gain'", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._TED_gain_win)
@@ -283,10 +283,10 @@ class pluto(gr.top_block, Qt.QWidget):
         # Connections
         ##################################################
         self.connect((self.iio_pluto_source_0, 0), (self.low_pass_filter_0, 0))
-        self.connect((self.low_pass_filter_0, 0), (self.analog_pwr_squelch_xx_0, 0))
+        # self.connect((self.low_pass_filter_0, 0), (self.analog_pwr_squelch_xx_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.qtgui_freq_sink_x_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
-        self.connect((self.analog_pwr_squelch_xx_0, 0), (self.blocks_correctiq_auto_0_0_0, 0))
+        self.connect((self.low_pass_filter_0, 0), (self.blocks_correctiq_auto_0_0_0, 0))
         self.connect((self.blocks_correctiq_auto_0_0_0, 0), (self.digital_costas_loop_cc_0_0, 0))
         self.connect((self.digital_costas_loop_cc_0_0, 0), (self.digital_symbol_sync_xx_0_0, 0))
         self.connect((self.digital_symbol_sync_xx_0_0, 0), (self.blocks_complex_to_float_0, 0))
