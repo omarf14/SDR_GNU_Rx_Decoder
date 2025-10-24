@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""
 
-#
-# SPDX-License-Identifier: GPL-3.0
-#
-# GNU Radio Python Flow Graph
-# Title: Not titled yet
-# Author: gs
-# GNU Radio version: 3.10.12.0
+ Author: OMARF
+ Email: omarf@fossa.systems
+
+ Creation Date: 2025-09-08 11:48:44
+
+ 
+
+"""
 
 from PyQt5 import Qt
 from gnuradio import qtgui
@@ -27,9 +27,6 @@ from gnuradio.fft import window
 import sys
 import signal
 from argparse import ArgumentParser
-from gnuradio.eng_arg import eng_float, intx
-from gnuradio import eng_notation
-from tag_printer_blk import tag_printer_bb
 from tag_to_pdu_blk import tag_to_pdu_udp_bb
 
 

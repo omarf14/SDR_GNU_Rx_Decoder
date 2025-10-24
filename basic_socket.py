@@ -1,3 +1,14 @@
+"""
+
+ Author: OMARF
+ Email: omarf@fossa.systems
+
+ Creation Date: 2025-09-08 11:48:44
+
+ 
+
+"""
+
 import socket
 from fec import PacketHandler
 from crypto import decrypt_aes
@@ -22,7 +33,7 @@ LONG_FRAME_LIMIT = 86
 TOTAL_FRAME_BIT_LEN = (RS_BLOCK_LENGTH + RAW_ASM_BYTE_LEN)*VITERBI_RATE*8
 TOTAL_FRAME_BYTE_LEN = (RS_BLOCK_LENGTH + RAW_ASM_BYTE_LEN)*VITERBI_RATE
 ACCESS_KEY_32B = 0xe15ae893
-ACCES_KEY_CONVOLVED_64B = 0xB9F8B220B1CF12BC
+ACCES_KEY_CONVOLVED_64B = bytes([0xB9,0xF8,0xB2,0x20,0xB1,0xCF,0x12,0xBC])
 THRESHOLD64 = 50
 THRESHOLD32 = 26
 
@@ -46,13 +57,17 @@ aes_key = "1fcbf1aa4e41f18c08524712541e432a"
 
 def decoder(message):
     ec = PacketHandler(None)
-    print(f"INFO: Decoding message len {len(message)}")
+    # print(f"INFO: Decoding message len {len(message)}")
     
     byte_array = bytes((sum(message[k * 8 + j] << (7 - j) for j in range(8)) for k in range(TOTAL_FRAME_BYTE_LEN)))
 
 
     ##### DEBUGGING PRINTING #####
     # print("Original data:\n{0}\n".format(ec.hexdump(byte_array)))
+    # segment = byte_array[:8]
+    # result = bytes([x ^ y for x, y in zip(segment, ACCES_KEY_CONVOLVED_64B)])
+    # print(result)
+    # print(result.hex())
     ##############################
 
 
@@ -81,7 +96,7 @@ def decoder(message):
             # Decode payload 
             payload, bit_corr, byte_corr = ec.decode_fec(data[ASM_SIZE:ASM_SIZE+RS_BLOCK_LENGTH])
             payload_len = int.from_bytes(payload[PAYLOAD_LEN_IDX:PAYLOAD_DATA_IDX], byteorder='little')
-            print(f"payload_len {payload_len}")
+            # print(f"payload_len {payload_len}")
             # print("INFO: Decode success with {} corrected bits, payload_len {} payload: \n{}\n".
             #         format(bit_corr, payload_len, payload[2:payload_len].decode('utf-8', errors='replace')))
             # print("Decoded data: \n{0}\n".format(ec.hexdump(payload[:TOTAL_PAYLOAD_SIZE])))
@@ -90,7 +105,8 @@ def decoder(message):
             if payload_crc != received_crc:
                 print("ERROR: payload CRC missmatch")
             decrypted = decrypt_aes(payload[PAYLOAD_DATA_IDX:CRC_IDX], aes_key)
-            print("Decrypted payload data: \n{0}\n".format(ec.hexdump(decrypted[:payload_len])))
+            # print("Decrypted payload data:")
+            print("{0}".format(ec.hexdump(decrypted[:payload_len])))
         else:
             print(f"ERROR: Matches below threshold {matches32}")
 
