@@ -16,6 +16,10 @@ class tag_to_pdu_udp_bb(gr.basic_block):
         self.buffer = np.array([], dtype=np.uint8)
         self.waiting_for_pdu = False
 
+         # Keep only last 64 samples
+        self.pre_tag_len = 64
+        self.last_64 = np.array([], dtype=np.uint8)
+
         # Setup UDP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp_ip = udp_ip
@@ -32,11 +36,15 @@ class tag_to_pdu_udp_bb(gr.basic_block):
             tags = self.get_tags_in_range(0, nread, nread + ninput)
             for tag in tags:
                 if tag.key == self.tag_key:
-                    relative_offset = tag.offset - nread
+                    relative_offset = tag.offset - nread - 64
+                    # print(f"[INFO] Tag found at offset {tag.offset}, relative offset {relative_offset} start buffering.")
                     if 0 <= relative_offset < ninput:
-                        self.buffer = in0[relative_offset-64:].copy()
+                        self.buffer = in0[relative_offset:].copy()
                         self.waiting_for_pdu = True
-                        print(f"[INFO] Tag found at offset {tag.offset}, start buffering.")
+                        break
+                    elif relative_offset < 0:
+                        self.buffer = np.concatenate((self.last_64[relative_offset:], in0[0:]))
+                        self.waiting_for_pdu = True
                         break
 
         else:
@@ -58,13 +66,21 @@ class tag_to_pdu_udp_bb(gr.basic_block):
             try:
                 self.sock.sendto(pdu_bytes.tobytes(), (self.udp_ip, self.udp_port))
                 self.counter += 1
-                print(f"📤 Sent PDU to {self.udp_ip}:{self.udp_port}, ctr {self.counter}")
+                print(f"Sent PDU to {self.udp_ip}:{self.udp_port}, ctr {self.counter}")
             except Exception as e:
-                print(f"❌ UDP send failed: {e}")
+                print(f"UDP send failed: {e}")
 
             # Reset
             self.buffer = np.array([], dtype=np.uint8)
             self.waiting_for_pdu = False
+        
+        # Save last 64 symbols for next execution
+        if len(in0) >= self.pre_tag_len:
+            self.last_64 = in0[-self.pre_tag_len:].copy()
+        else:
+            self.last_64 = np.concatenate((self.last_64, in0))
+            if len(self.last_64) > self.pre_tag_len:
+                self.last_64 = self.last_64[-self.pre_tag_len:]
 
         self.consume(0, ninput)
         return ninput if ninput > 0 else 1
