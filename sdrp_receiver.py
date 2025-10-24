@@ -30,11 +30,6 @@ from argparse import ArgumentParser
 from tag_to_pdu_blk import tag_to_pdu_udp_bb
 
 
-# Rx source config
-SOURCE_PLUTO = 0
-SOURCE_USRP = 1
-SOURCE = SOURCE_PLUTO
-
 
 # Rx sync config
 LO_FREQ = 2.23e9
@@ -48,10 +43,6 @@ ASM_thr = 8
 RF_GAIN = 45
 SYNC_LOOP = 0.02
 COSTAS_LOOP = 0.025
-if SOURCE == SOURCE_USRP:
-    RF_GAIN = 30
-    SYNC_LOOP = 0.008
-    COSTAS_LOOP = 0.01
 
 
 # PDU and UDP client config
@@ -60,9 +51,9 @@ UDP_IP = '127.0.0.1'
 UDP_PORT = 52001
 
 
-class pluto(gr.top_block, Qt.QWidget):
+class sdrp_receiver(gr.top_block, Qt.QWidget):
 
-    def __init__(self):
+    def __init__(self, source="pluto"):
         gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
         Qt.QWidget.__init__(self)
         self.setWindowTitle("Not titled yet")
@@ -96,6 +87,16 @@ class pluto(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
+        if source.lower() == "usrp":
+            self.SOURCE = SOURCE_USRP
+            RF_GAIN = 30
+            SYNC_LOOP = 0.008
+            COSTAS_LOOP = 0.01
+        else:
+            RF_GAIN = 45
+            SYNC_LOOP = 0.02
+            COSTAS_LOOP = 0.025
+            
         self.bw = bw = BW
         self.variable_tag_object_0 = variable_tag_object_0 = gr.tag_utils.python_to_tag((0, pmt.intern("key"), pmt.intern("value"), pmt.intern("src")))
         self.sync_loop = sync_loop = SYNC_LOOP
@@ -258,8 +259,12 @@ class pluto(gr.top_block, Qt.QWidget):
                 window.WIN_HAMMING,
                 0.35))
 
-
-        if SOURCE == SOURCE_USRP:
+        # Rx source config
+        if source.lower() == "usrp":
+            self.SOURCE = SOURCE_USRP
+            RF_GAIN = 30
+            SYNC_LOOP = 0.008
+            COSTAS_LOOP = 0.01
             self.source = uhd.usrp_source(
                 ",".join(("", '')),
                 uhd.stream_args(
@@ -276,6 +281,9 @@ class pluto(gr.top_block, Qt.QWidget):
             self.source.set_auto_dc_offset(True, 0)
             self.source.set_auto_iq_balance(True, 0)
         else:
+            RF_GAIN = 45
+            SYNC_LOOP = 0.02
+            COSTAS_LOOP = 0.025
             self.source = iio.fmcomms2_source_fc32('' if '' else iio.get_pluto_uri(), [True, True], 32768)
             self.source.set_len_tag_key('packet_len')
             self.source.set_frequency(LO_FREQ)
@@ -432,11 +440,21 @@ class pluto(gr.top_block, Qt.QWidget):
 
 
 
-def main(top_block_cls=pluto, options=None):
+def main(top_block_cls=sdrp_receiver, options=None):
+
+    parser = ArgumentParser(description="SDR RX")
+    parser.add_argument(
+        "--source",
+        type=str,
+        default="pluto",
+        choices=["pluto", "usrp"],
+        help="Select SDR source (default: pluto)"
+    )
+    args = parser.parse_args()
 
     qapp = Qt.QApplication(sys.argv)
 
-    tb = top_block_cls()
+    tb = top_block_cls(source=args.source)
 
     tb.start()
     tb.flowgraph_started.set()

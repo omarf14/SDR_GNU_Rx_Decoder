@@ -1,21 +1,59 @@
-About the BlueBox
------------------
 
-The bluebox is a USB-powered ground station box design for the AAUSAT3 cubesat
-satellite. The device firmware, control software and hardware is licensed under
-the MIT license with the hope that it may be useful to other cubesat projects.
+# SDRP GNU Rx
 
-The device is built around the Analog Devices ADF7021 transceiver and controlled
-by an Atmel ATMEGA32U4 microcontroller with hardware USB. The firmware makes use
-of the open source LUFA USB stack and uses libusb and pyusb for communication
-between the device and control program, bbctl.
+A GNU Radio-based BPSK receiver and PDU decoder system. This project handles symbol reception, ASM detection, PDU generation, and higher-layer decoding including Viterbi, FEC, and decryption.
 
+---
 
-How to install bbctl
---------------------
+## Requirements
 
-Go to software/bbctl and run:
+* **GNU Radio Companion** (tested with v3.10.1.1)
+* Python 3.x
+* Required Python packages: see `requirements.txt`
+* C++ compiler for FEC module
 
-    $ sudo python2 setup.py install
+---
 
-Note that you need gcc to compile the FEC extension module.
+## Setup
+
+1. **Install GNU Radio Companion** and all dependencies.
+2. **Build FEC module**:
+
+```bash
+cd fec
+make all
+```
+
+This generates the `bbfec.so` objects needed by the decoder.
+
+---
+
+## Usage
+
+1. **Run the BPSK Receiver**
+   This script syncs, detects the ASM, collects symbols, and packages them into PDUs. You can specify the RX source with the `--source` option:
+
+```bash
+# Use Pluto as the receiver (default)
+python3 sdrp_bpsk_receiver.py --source pluto
+
+# Use USRP as the receiver
+python3 sdrp_bpsk_receiver.py --source usrp
+```
+
+2. **Run the PDU Decoder (UDP Server)**
+   This script receives PDUs via UDP and applies decoding (Viterbi, FEC, decryption):
+
+```bash
+python3 sdrp_pdu_decoder.py
+```
+
+---
+
+## Notes
+
+* Ensure the receiver is running **before** the decoder server.
+* Tested on GNU Radio v3.10.1.1 and Python 3.10.
+* For modifications to FEC, rebuild using `make all` in the `fec` folder.
+
+---
