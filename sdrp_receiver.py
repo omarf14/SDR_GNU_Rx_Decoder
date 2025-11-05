@@ -18,6 +18,7 @@ from gnuradio import digital
 from gnuradio import filter
 from gnuradio.filter import firdes
 from gnuradio import iio
+from gnuradio import uhd
 import pmt
 import sip
 import threading
@@ -88,7 +89,7 @@ class sdrp_receiver(gr.top_block, Qt.QWidget):
         # Variables
         ##################################################
         if source.lower() == "usrp":
-            self.SOURCE = SOURCE_USRP
+            #self.SOURCE = SOURCE_USRP
             RF_GAIN = 30
             SYNC_LOOP = 0.008
             COSTAS_LOOP = 0.01
@@ -261,7 +262,6 @@ class sdrp_receiver(gr.top_block, Qt.QWidget):
 
         # Rx source config
         if source.lower() == "usrp":
-            self.SOURCE = SOURCE_USRP
             RF_GAIN = 30
             SYNC_LOOP = 0.008
             COSTAS_LOOP = 0.01
@@ -280,6 +280,7 @@ class sdrp_receiver(gr.top_block, Qt.QWidget):
             self.source.set_gain(rf_gain, 0)
             self.source.set_auto_dc_offset(True, 0)
             self.source.set_auto_iq_balance(True, 0)
+            self.blocks_interleaved_short_to_complex_0 = blocks.interleaved_short_to_complex(True, False,2047)
         else:
             RF_GAIN = 45
             SYNC_LOOP = 0.02
@@ -313,13 +314,9 @@ class sdrp_receiver(gr.top_block, Qt.QWidget):
         self.digital_binary_slicer_fb_0 = digital.binary_slicer_fb()
         self.blocks_correctiq_auto_0_0_0 = blocks.correctiq_auto(samp_rate, freq, 1.5, 2)
         self.blocks_complex_to_float_0 = blocks.complex_to_float(1)
-        # self.analog_pwr_squelch_xx_0 = analog.pwr_squelch_cc((-70), (1e-4), True, True)
         self._TED_gain_range = qtgui.Range(0.01, 0.1, 0.01, 0.02, 200)
         self._TED_gain_win = qtgui.RangeWidget(self._TED_gain_range, self.set_TED_gain, "'TED_gain'", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._TED_gain_win)
-        # self.tag_printer = tag_printer_bb('ac_found')
-        # self.pdu_printer = tag_to_pdu_printer_bb()
-        # self.tag_to_pdu = tag_to_pdu_udp_bb('ac_found', 4144, '127.0.0.1', 52001)
         self.tag_to_pdu = tag_to_pdu_udp_bb(
             tag_key='ac_found',
             pdu_len=PDU_LEN,
@@ -335,7 +332,11 @@ class sdrp_receiver(gr.top_block, Qt.QWidget):
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.source, 0), (self.low_pass_filter_0, 0))
+        if source.lower() == "usrp":
+            self.connect((self.source, 0), (self.blocks_interleaved_short_to_complex_0, 0))
+            self.connect((self.blocks_interleaved_short_to_complex_0, 0), (self.low_pass_filter_0, 0))
+        else:
+            self.connect((self.source, 0), (self.low_pass_filter_0, 0))
         # self.connect((self.low_pass_filter_0, 0), (self.analog_pwr_squelch_xx_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.qtgui_freq_sink_x_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.qtgui_waterfall_sink_x_0, 0))
