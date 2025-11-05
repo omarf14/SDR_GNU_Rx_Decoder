@@ -53,7 +53,7 @@ CRC_SIZE                    = 4
 TOTAL_PAYLOAD_SIZE          = CRC_IDX+CRC_SIZE
 
 
-aes_key = "1fcbf1aa4e41f18c08524712541e432a"
+aes_key = "5a749388c2e7d195e630517a9699f2d4"
 
 def decoder(message):
     ec = PacketHandler(None)
